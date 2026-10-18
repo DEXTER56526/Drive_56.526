@@ -1,8 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 
-// MobileUIBinder: wires mobile UI buttons to the MobileTouchController at runtime.
-// This script sets up the onClick listener in Awake so the linkage persists when the scene is saved.
+// MobileUIBinder: wires the Rench button to the MobileTouchController.
 public class MobileUIBinder : MonoBehaviour
 {
     public MobileTouchController mobile;
