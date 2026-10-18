@@ -25,18 +25,21 @@ public class WheelVehicleController : MonoBehaviour
     public float downforce = 100f;
 
     Rigidbody rb;
+    DamageController damageController;
 
     void Awake()
     {
         rb = GetComponent<Rigidbody>();
         rb.centerOfMass = new Vector3(0f, -0.5f, 0f);
+        damageController = GetComponent<DamageController>();
     }
 
     void FixedUpdate()
     {
-        float motorInput = Input.GetAxis("Vertical");
-        float steerInput = Input.GetAxis("Horizontal");
-        bool handBrake = Input.GetKey(KeyCode.Space);
+        var ia = InputAdapter.Instance;
+        float motorInput = ia != null ? ia.Throttle : Input.GetAxis("Vertical");
+        float steerInput = ia != null ? ia.Steering : Input.GetAxis("Horizontal");
+        bool handBrake = ia != null ? ia.HandBrake : Input.GetKey(KeyCode.Space);
 
         float speedKPH = rb.velocity.magnitude * 3.6f;
 
@@ -46,26 +49,24 @@ public class WheelVehicleController : MonoBehaviour
         else if (motorInput < 0) motor = motorInput * (maxMotorTorque * 0.5f); // reverse weaker
 
         // Apply motor torque to rear wheels (rear-wheel drive)
-        rearLeftCollider.motorTorque = motor * Time.fixedDeltaTime;
-        rearRightCollider.motorTorque = motor * Time.fixedDeltaTime;
+        if (rearLeftCollider != null) rearLeftCollider.motorTorque = motor * Time.fixedDeltaTime;
+        if (rearRightCollider != null) rearRightCollider.motorTorque = motor * Time.fixedDeltaTime;
 
         // Steering
         float steer = steerInput * maxSteerAngle;
-        frontLeftCollider.steerAngle = steer;
-        frontRightCollider.steerAngle = steer;
+        if (frontLeftCollider != null) frontLeftCollider.steerAngle = steer;
+        if (frontRightCollider != null) frontRightCollider.steerAngle = steer;
 
         // Brakes
-        float brake = 0f;
         if (handBrake)
         {
-            brake = maxBrakeTorque;
-            rearLeftCollider.brakeTorque = brake;
-            rearRightCollider.brakeTorque = brake;
+            if (rearLeftCollider != null) rearLeftCollider.brakeTorque = maxBrakeTorque;
+            if (rearRightCollider != null) rearRightCollider.brakeTorque = maxBrakeTorque;
         }
         else
         {
-            rearLeftCollider.brakeTorque = 0f;
-            rearRightCollider.brakeTorque = 0f;
+            if (rearLeftCollider != null) rearLeftCollider.brakeTorque = 0f;
+            if (rearRightCollider != null) rearRightCollider.brakeTorque = 0f;
         }
 
         // Simple downforce
@@ -92,5 +93,16 @@ public class WheelVehicleController : MonoBehaviour
     {
         if (rb == null) return 0f;
         return rb.velocity.magnitude * 3.6f;
+    }
+
+    void OnCollisionEnter(Collision collision)
+    {
+        // Simple damage on impact proportional to relative velocity
+        if (damageController != null)
+        {
+            float impact = collision.relativeVelocity.magnitude;
+            float dmg = impact * 2f; // tuning factor
+            damageController.ApplyDamage(dmg);
+        }
     }
 }
